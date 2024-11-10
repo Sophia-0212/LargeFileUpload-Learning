@@ -19,6 +19,17 @@ server.use(bodyParser.json())
 
 server.use(express.static('static'))
 
+// 检查文件是否已上传
+server.post('/checkUploaded', (req, res) => {
+    const { fileHash } = req.body;
+    const filePath = path.join(__dirname, 'assets', `${fileHash}-0`);
+    if (fs.existsSync(filePath)) {
+        res.json({ isUploaded: true });
+    } else {
+        res.json({ isUploaded: false });
+    }
+});
+
 server.post('/upload',upload.single('file'), (req, res, next) => {
     fs.rename(`./assets/${req.file.filename}`,`./assets/${req.body.fileHash}-${req.body.chunkIndex}`,()=>{
         let obj = {
