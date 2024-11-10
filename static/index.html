@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>大文件上传</title>
+        <script src='./spark-md5.js'></script>
+    </head>
+    <body>
+        <input type="file">
+    </body>
+
+    <script>
+        // 使用单独常量保存预设切片大小 1MB
+        const chunkSize = 1024 * 1024 * 1; 
+        
+        //分片
+        const createChunks = (file) => {
+            // 接受一个文件对象，要把这个文件对象切片，返回一个切片数组
+            const chunks = [];
+            // 文件大小.slice(开始位置,结束位置)
+            let start = 0;
+            let index = 0;
+            while (start < file.size) {
+                let curChunk = file.slice(start, start + chunkSize);
+                chunks.push({
+                    file: curChunk,
+                    uploaded: false,
+                    chunkIndex: index,
+                    fileHash: fileHash,
+                });
+                index++;
+                start += chunkSize;
+            }
+            return chunks;
+        }
+        
+        //获取文件hash
+        const getHash = (file) => {
+            return new Promise((resolve) => {
+                const fileReader = new FileReader();
+                fileReader.readAsArrayBuffer(file);
+                fileReader.onload = function (e) {
+                    let fileMd5 = SparkMD5.ArrayBuffer.hash(e.target.result);
+                    resolve(fileMd5);
+                }
+            });
+        }
+        
+        //发起合并分片
+        function merge(fileName,fileHash,total){
+            let result = fetch('http://localhost:8080/merge', {
+                method: 'POST',
+                headers:{
+                    'Content-Type':'application/json'
+                },
+                body: JSON.stringify({
+                    fileName:fileName,
+                    fileHash:fileHash,
+                    total:total
+                }) 
+            }).then(res => res.json());
+        }
+
+        //分片上传
+        function uploadHandler(chunk,chunks){
+            return new Promise(async (resolve, reject) => {
+                try {
+                    let fd = new FormData();
+                    fd.append('fileName', fileName);
+                    fd.append('file', chunk.file);
+                    fd.append('total', chunks.length);
+                    fd.append('fileHash', chunk.fileHash);
+                    fd.append('chunkIndex', chunk.chunkIndex);
+                    let result = await fetch('http://localhost:8080/upload', {
+                        method: 'POST',
+                        body: fd
+                    }).then(res => res.json());
+                    chunk.uploaded = true;
+                    resolve(result)
+                } catch (err) {
+                    reject(err)
+                }
+            })
+        }
+
+        // 文件hash值
+        let fileHash = "";
+        // 文件名
+        let fileName = "";
+
+        let file = document.querySelector('input');
+        
+        //提交文件
+        file.oninput = async(e)=>{
+            let file = e.target.files[0];
+
+            // 设置文件名
+            fileName = file.name;
+            // 获取文件hash值
+            fileHash = await getHash(file);
+
+            chunks = createChunks(file);
+            
+            //上传分片文件
+            chunks.forEach((chunk)=>{
+                uploadHandler(chunk,chunks);
+            });
+            
+            //模拟分片完成之后，发起合并分片文件请求
+            setTimeout(()=>{
+                merge(fileName,fileHash,chunks.length);
+            },1000)
+        } 
+
+        
+    </script>
+</html>
