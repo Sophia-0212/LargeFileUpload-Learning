@@ -1,6 +1,6 @@
 # Big File Upload Tutorial 🎉
 
-This project is a tutorial for implementing large file uploads using a分片上传并合并 method. 😃
+This project is a tutorial for implementing large file uploads using a method of slicing and merging. 😃
 
 **Key Features**:
 - 📄 File slicing.
