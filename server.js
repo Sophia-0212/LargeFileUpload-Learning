@@ -12,7 +12,6 @@ const upload = multer({
     storage
 })
 
-
 const server = express()
 server.use(bodyParser.urlencoded({extended: false}));
 server.use(bodyParser.json())
@@ -50,16 +49,16 @@ server.post('/merge', (req, res, next) => {
         mergePathArr.push(`./assets/${fileHash}-${i}`);
     }
 
-    //合并且切片文件
-    /*
-        to do:合并文件后删除切片文件
-    */
+    //合并切片文件
     mergePathArr.forEach((path)=>{
         let content = fs.readFileSync(path);
-
         fs.appendFileSync(`./assets/${fileName}`,content)
-        
     })
+
+    // 删除切片文件
+    mergePathArr.forEach((path) => {
+        fs.unlinkSync(path);
+    });
 
     let obj = {
         message:'ok',
@@ -69,4 +68,6 @@ server.post('/merge', (req, res, next) => {
 
 })
 
-server.listen(8080)
+server.listen(8080, () => {
+    console.log('Server is running on port 8080');
+});
